@@ -27,11 +27,11 @@ opening a pull request.
 ## Direct package fallback
 
 ```bash
-npx skills add https://cover-arts-launcher.yishan.app/skills/ai-passport-cover-arts-launcher.zip --skill ai-passport-cover-arts-launcher -y
+npx skills add https://calm.yishan.app/skills/ai-passport-cover-arts-launcher.zip --skill ai-passport-cover-arts-launcher -y
 ```
 
 You can also read the canonical instructions directly at
-<https://cover-arts-launcher.yishan.app/skills/ai-passport-cover-arts-launcher/SKILL.md>.
+<https://calm.yishan.app/skills/ai-passport-cover-arts-launcher/SKILL.md>.
 
 ## Contents
 

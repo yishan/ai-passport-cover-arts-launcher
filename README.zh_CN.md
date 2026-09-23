@@ -22,11 +22,11 @@ Skill 不代表授权烧录设备、commit、push、发布或创建 Pull Request
 ## 直接安装包回退
 
 ```bash
-npx skills add https://cover-arts-launcher.yishan.app/skills/ai-passport-cover-arts-launcher.zip --skill ai-passport-cover-arts-launcher -y
+npx skills add https://calm.yishan.app/skills/ai-passport-cover-arts-launcher.zip --skill ai-passport-cover-arts-launcher -y
 ```
 
 也可以直接阅读主指引：
-<https://cover-arts-launcher.yishan.app/skills/ai-passport-cover-arts-launcher/SKILL.md>。
+<https://calm.yishan.app/skills/ai-passport-cover-arts-launcher/SKILL.md>。
 
 ## 内容
 
