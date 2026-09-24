@@ -33,11 +33,20 @@ Do not hardcode the factory address. Do not select an unverified image. Do not
 mark the child application valid when the Launcher relies on one-shot OTA
 rollback for reboot-to-Launcher compatibility.
 
+This applies to everything linked into the play, not only its own code:
+`components/`, `managed_components/`, extra component directories, and prebuilt
+libraries. `esp_ota_mark_app_valid_cancel_rollback()` anywhere in the firmware
+is a blocker. `esp_ota_set_boot_partition()`, `esp_https_ota()` and
+`esp_https_ota_finish()` outside `launcher_contract` change the boot target and
+need review. `scripts/audit_boot_control.py` checks both in source and in the
+linked build.
+
 ## Acceptance checklist
 
 - Cover page + Up Long: Launcher appears.
 - Gameplay + Up Long: original play behavior remains.
 - Settings/other states + Up Long: original play behavior remains.
+- Boot-control audit of the release build: no blocker.
 - Reset from the play: Launcher appears.
 - Power-cycle from the play: Launcher appears.
 - Missing/invalid factory in a controlled test: no reboot loop; error is logged.

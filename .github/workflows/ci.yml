@@ -29,6 +29,13 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
 
+  audit-tests:
+    name: Boot-control audit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests/audit -v
+
   idf-build:
     name: ESP-IDF ${{ matrix.idf }} build (esp32c3)
     runs-on: ubuntu-latest
@@ -43,3 +50,5 @@ jobs:
           esp_idf_version: ${{ matrix.idf }}
           target: esp32c3
           path: examples/cover_return_demo
+      - name: Audit the linked example
+        run: python3 scripts/audit_boot_control.py examples/cover_return_demo --extra assets

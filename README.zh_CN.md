@@ -34,6 +34,8 @@ npx skills add https://calm.yishan.app/skills/ai-passport-cover-arts-launcher.zi
 - `references/`：协议细节、验收清单与接入示例
 - `assets/launcher_contract/`：可复用 ESP-IDF 返回组件
 - `examples/cover_return_demo/`：基于该组件构建的最小玩法
+- `scripts/audit_boot_control.py`：找出玩法及其任何依赖中会破坏“复位返回
+  Launcher”的代码
 - `tests/host/`：组件与封面门控的主机测试
 - `agents/openai.yaml`：Agent 元数据
 
@@ -42,10 +44,12 @@ npx skills add https://calm.yishan.app/skills/ai-passport-cover-arts-launcher.zi
 ```bash
 tests/host/run.sh                   # host tests, needs only a C compiler
 scripts/check_i18n_sync.py          # English/Chinese docs structure check
+python3 -m unittest discover -s tests/audit     # boot-control audit tests
 cd examples/cover_return_demo && idf.py build   # needs ESP-IDF 5.1 or newer
+scripts/audit_boot_control.py examples/cover_return_demo --extra assets
 ```
 
-CI 在每个 Pull Request 上运行以上三项，并用多个 ESP-IDF 版本构建示例。
+CI 在每个 Pull Request 上运行以上全部检查，并用多个 ESP-IDF 版本构建示例。
 
 英文文件为权威版本。修改时须在同一变更中同步对应的 `*.zh_CN.md`；同步检查
 要求标题结构一致、代码块完全相同、链接目标一致。

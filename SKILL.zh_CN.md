@@ -35,6 +35,11 @@ description: 检查或接入 AI Passport 玩法的可选 Cover Arts Launcher 返
    GPIO 计时。
 4. 找到玩法已有的封面／开始状态，以及能够可靠获知该状态的统一输入分发点。
 5. 检查分区假设。辅助组件在运行时查找并校验 `factory` 分区，不得硬编码地址。
+6. 对整个玩法（含依赖库）做启动控制审计：先构建，再在本 Skill 目录下运行
+   `python3 scripts/audit_boot_control.py <play-dir>`，玩法目录外的每个组件
+   目录用 `--extra <dir>` 加入。脚本扫描玩法、`components/`、
+   `managed_components/` 和预编译 `.a` 文件，再用链接 map 与 ELF 指出实际
+   链接该调用的库。未构建时，须在报告中说明预编译依赖仅按符号名检查。
 
 无法可靠识别封面状态时，停止并说明阻碍。不得增加全局监听，也不得为满足
 协议擅自新增封面页。
@@ -70,6 +75,11 @@ game_handle_input(input);
 `esp_ota_mark_app_valid_cancel_rollback()`。复位或重新上电必须继续作为通用
 兜底，让未适配和已适配玩法都能返回 Launcher。
 
+依赖库发起这一调用，与玩法自身调用一样会破坏兜底。每个审计 BLOCKER 都须连同
+链接它的库一起报告，未经创作者同意不做修改。玩法若有自有 OTA 流程，在未确认
+状态下运行时 `esp_ota_begin()` 会返回 `ESP_ERR_OTA_ROLLBACK_INVALID_STATE`；
+绝不能通过把玩法标记为有效来解决。
+
 ## 验证边界
 
 先运行仓库最小相关主机测试，再运行其规定的构建门禁。检查最终 diff，并确认：
@@ -78,6 +88,8 @@ game_handle_input(input);
 - 游戏、设置、暂停、结算及其他状态中的 Up Long 完全不受影响。
 - `factory` 分区缺失、无效或已经在运行时，函数返回错误并保持玩法运行。
 - 没有硬编码 factory 地址或产品专用分区偏移。
+- 最终构建的启动控制审计没有 BLOCKER，或每个 BLOCKER 都已连同来源报告给
+  创作者决定。
 - 复位或重新上电仍会返回 Launcher。
 - 除非创作者明确要求，否则不新增任何界面文字。
 

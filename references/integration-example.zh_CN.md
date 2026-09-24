@@ -29,8 +29,21 @@ pixel-garden/
 git status --short --branch
 grep -rn "LONG" components/bsp main
 grep -rn "APP_STATE_" main
-grep -rn "mark_app_valid" main components managed_components
 grep -n "factory" partitions.csv
+idf.py build
+python3 "$SKILL_DIR/scripts/audit_boot_control.py" .
+```
+
+`$SKILL_DIR` 为本 Skill 的 `SKILL.md` 所在目录。最后一条命令输出：
+
+```text
+Boot-control audit: /work/pixel-garden
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in esp-idf/main/libmain.a(app.c.obj) (linked into pixel_garden.elf)
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in esp-idf/vendor__cloud_save/libvendor__cloud_save.a(sync.c.obj) (linked into pixel_garden.elf)
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in pixel-garden/main/app.c (source)
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in pixel-garden/managed_components/vendor__cloud_save/src/sync.c (source)
+    why: confirms the play as valid, so reset and power-cycle keep booting it instead of the Launcher
+  NOTE: The play has its own OTA path (esp_ota_begin). While it runs unconfirmed under the Launcher, esp_ota_begin() returns ESP_ERR_OTA_ROLLBACK_INVALID_STATE. Do not "fix" that by marking the play valid; the play's own OTA is outside this protocol and needs a creator decision.
 ```
 
 Agent 的发现及其含义：
@@ -47,9 +60,15 @@ Agent 的发现及其含义：
   写入状态，判断时必须持有该任务使用的同一把锁。
 - **分区：** `partitions.csv` 中有标签为 `factory` 的 app 分区。辅助函数在运行时
   查找它，玩法中不出现任何地址。
-- **回滚：** `app_main()` 调用了从 OTA 示例复制来的
+- **回滚（玩法自身）：** `app_main()` 调用了从 OTA 示例复制来的
   `esp_ota_mark_app_valid_cancel_rollback()`，它会悄悄破坏“复位返回 Launcher”。
-  必须报告。只有创作者同意时才删除，因为玩法可能还带着自有 OTA 流程单独发布。
+- **回滚（依赖库）：** 为云存档引入的 `vendor__cloud_save` 托管组件在首次同步
+  后确认玩法有效。只 grep `main` 永远发现不了它，仅删除 `app.c` 中的调用也修
+  不好玩法。链接 map 指出具体库，ELF 证明该调用确实进入固件；对闭源 `.a`
+  而言，这是唯一的证据。
+- **两者的处理：** 逐条报告 BLOCKER 及其来源。未经创作者同意不做任何修改：
+  玩法可能带着自有 OTA 流程单独发布，依赖库可能需要改配置、fork 或替换。
+  输出中的 OTA 提示说明了这类代码为何常常出现。
 
 ## 2. Diff
 
@@ -138,10 +157,11 @@ esp_partition_pos_t pos = { .offset = 0x10000, .size = 0x100000 };
 
 各类结果分别报告，不得相互替代：
 
-- **Build：** `idf.py build` 在玩法目标芯片上通过。
+- **Build：** `idf.py build` 在玩法目标芯片上通过，并附上该构建的启动控制
+  审计结果。
 - **Host tests：** 每个状态的门控测试均通过（参见
   [`tests/host/`](../tests/host/)）。
 - **Device tests：** 只填写真机上实际执行过的项目，按
   [验收清单](protocol.zh_CN.md#验收清单) 逐条列出。
 - **Unverified：** 其余全部，包括无人执行的复位与重新上电，以及创作者尚未
-  决定的 `mark_app_valid` 问题。
+  决定的所有启动控制 BLOCKER。

@@ -42,6 +42,13 @@ request. Obtain the authorization required by the active repository workflow.
    point where that state is known.
 5. Check the partition assumptions. The helper finds a verified `factory`
    partition at runtime; never hardcode its address.
+6. Audit boot control across the whole play, dependencies included: build it,
+   then run `python3 scripts/audit_boot_control.py <play-dir>` from this
+   Skill's directory, adding `--extra <dir>` for each component directory
+   outside the play. It scans the play, `components/`, `managed_components/`
+   and prebuilt `.a` files, then uses the linker map and ELF to name the
+   library that actually links each call. Without a build, report that
+   prebuilt dependencies were checked by symbol name only.
 
 If the cover state cannot be identified reliably, stop and explain the blocker.
 Do not add a global listener and do not create a new cover page just to satisfy
@@ -80,6 +87,12 @@ Do not call `esp_ota_mark_app_valid_cancel_rollback()` when the installation
 relies on the Launcher's one-shot OTA behavior. Reset or power-cycle must remain
 the universal fallback that returns an unadapted or adapted play to Launcher.
 
+A dependency that makes this call breaks the fallback just as surely as the
+play doing it. Report every audit BLOCKER with the library that links it and
+change nothing without the creator's agreement. If the play has its own OTA
+path, `esp_ota_begin()` returns `ESP_ERR_OTA_ROLLBACK_INVALID_STATE` while the
+play runs unconfirmed; never resolve that by marking the play valid.
+
 ## Verify the boundary
 
 Run the repository's smallest relevant host tests, then its documented build
@@ -91,6 +104,8 @@ gate. Inspect the final diff and verify all of the following:
 - A missing, invalid, or already-running factory partition produces an error
   and leaves the play running.
 - No factory address or product-specific partition offset is hardcoded.
+- The boot-control audit of the final build shows no BLOCKER, or each one is
+  reported with its origin for the creator to decide.
 - Reset or power-cycle still returns to Launcher.
 - The change adds no new screen text unless the creator explicitly requested it.
 

@@ -30,8 +30,22 @@ pixel-garden/
 git status --short --branch
 grep -rn "LONG" components/bsp main
 grep -rn "APP_STATE_" main
-grep -rn "mark_app_valid" main components managed_components
 grep -n "factory" partitions.csv
+idf.py build
+python3 "$SKILL_DIR/scripts/audit_boot_control.py" .
+```
+
+`$SKILL_DIR` is the directory that holds this Skill's `SKILL.md`. The last
+command reports:
+
+```text
+Boot-control audit: /work/pixel-garden
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in esp-idf/main/libmain.a(app.c.obj) (linked into pixel_garden.elf)
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in esp-idf/vendor__cloud_save/libvendor__cloud_save.a(sync.c.obj) (linked into pixel_garden.elf)
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in pixel-garden/main/app.c (source)
+  BLOCKER: esp_ota_mark_app_valid_cancel_rollback in pixel-garden/managed_components/vendor__cloud_save/src/sync.c (source)
+    why: confirms the play as valid, so reset and power-cycle keep booting it instead of the Launcher
+  NOTE: The play has its own OTA path (esp_ota_begin). While it runs unconfirmed under the Launcher, esp_ota_begin() returns ESP_ERR_OTA_ROLLBACK_INVALID_STATE. Do not "fix" that by marking the play valid; the play's own OTA is outside this protocol and needs a creator decision.
 ```
 
 What the agent finds, and what each finding means:
@@ -49,10 +63,18 @@ What the agent finds, and what each finding means:
   state, the check would have to read it under the lock that task uses.
 - **Partitions:** `partitions.csv` has an app partition labeled `factory`. The
   helper finds it at runtime; no address appears in the play.
-- **Rollback:** `app_main()` calls `esp_ota_mark_app_valid_cancel_rollback()`,
-  copied from an OTA sample. That silently breaks reset-to-Launcher. Report it.
-  Remove it only with the creator's agreement, because they may ship the play
-  standalone with its own OTA flow.
+- **Rollback, in the play:** `app_main()` calls
+  `esp_ota_mark_app_valid_cancel_rollback()`, copied from an OTA sample. That
+  silently breaks reset-to-Launcher.
+- **Rollback, in a dependency:** the `vendor__cloud_save` managed component,
+  added for cloud saves, confirms the play after its first sync. A grep over
+  `main` would never find it, and deleting the call in `app.c` would not fix
+  the play. The linker map names the library, and the ELF proves the call is
+  in the firmware; for a closed-source `.a` this is the only evidence.
+- **What to do with both:** report each BLOCKER with its origin. Change nothing
+  without the creator's agreement: they may ship the play standalone with its
+  own OTA flow, and the dependency may need a setting, a fork, or a
+  replacement. The OTA note explains why such code tends to appear.
 
 ## 2. The diff
 
@@ -144,10 +166,11 @@ reset or power-cycle, and the report should say so.
 
 Report each category separately and never promote one into another:
 
-- **Build:** `idf.py build` passes for the play's target.
+- **Build:** `idf.py build` passes for the play's target, and the
+  boot-control audit of that build is attached.
 - **Host tests:** the state-gate tests pass for every state (see
   [`tests/host/`](../tests/host/)).
 - **Device tests:** fill in only what was run on hardware, one line per item
   from the [acceptance checklist](protocol.md#acceptance-checklist).
 - **Unverified:** everything else, including reset and power-cycle if nobody
-  ran them, and the `mark_app_valid` finding while the creator has not decided.
+  ran them, and every boot-control BLOCKER the creator has not yet decided on.
