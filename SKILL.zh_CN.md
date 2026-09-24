@@ -13,8 +13,10 @@ description: 检查或接入 AI Passport 玩法的可选 Cover Arts Launcher 返
 有意保持窄边界：**只有玩法自己的封面／开始页处于活动状态时才处理 Up Long**。
 游戏、设置及其他状态继续保留原有的 Up Long 行为。
 
-修改前先阅读 [`references/protocol.zh_CN.md`](references/protocol.zh_CN.md)。
-玩法自身的状态机、输入模型和仓库规则是事实来源。
+修改前先阅读 [`references/protocol.zh_CN.md`](references/protocol.zh_CN.md)，
+并参考 [`references/integration-example.zh_CN.md`](references/integration-example.zh_CN.md)
+中包含判断过程、diff 和常见错误的完整示例。玩法自身的状态机、输入模型和仓库
+规则是事实来源。
 
 ## 确认请求模式
 
@@ -58,7 +60,9 @@ if (app_state == APP_STATE_COVER &&
 game_handle_input(input);
 ```
 
-按项目调整名称，但必须保留状态门控语义。应从输入／应用任务调用辅助函数，
+按项目调整名称，但必须保留状态门控语义。门控应基于接收该事件时的状态，
+即在玩法自身处理函数改变状态之前判断。辅助函数会以 `launcher_contract` 标签
+记录失败步骤，调用方日志补充玩法上下文。应从输入／应用任务调用辅助函数，
 不得直接在 GPIO、定时器或 LVGL 回调中调用。玩法如需保存状态，应先完成有
 明确时限的保存，再调用辅助函数。
 
@@ -91,5 +95,8 @@ README 或社区列表可使用：
 ## 资源
 
 - 协议与验收细则：[`references/protocol.zh_CN.md`](references/protocol.zh_CN.md)
+- 接入示例：[`references/integration-example.zh_CN.md`](references/integration-example.zh_CN.md)
 - 可复用 ESP-IDF 组件：[`assets/launcher_contract/`](assets/launcher_contract/)
+- 可构建的参考玩法：[`examples/cover_return_demo/`](examples/cover_return_demo/)
+- 可供玩法仿照编写门控测试的主机测试：[`tests/host/`](tests/host/)
 - 公开指南：`https://calm.yishan.app/skills/`

@@ -14,9 +14,11 @@ Cover Arts Launcher. The protocol is deliberately narrow: **Up Long is handled
 only while the play's own cover/start page is active**. Gameplay, settings, and
 all other states retain their existing Up Long behavior.
 
-Read [`references/protocol.md`](references/protocol.md) before editing. Treat
-the project's own state machine, input model, and repository rules as the source
-of truth.
+Read [`references/protocol.md`](references/protocol.md) before editing, and
+[`references/integration-example.md`](references/integration-example.md) for a
+complete walkthrough with the reasoning, diff, and common mistakes. Treat the
+project's own state machine, input model, and repository rules as the source of
+truth.
 
 ## Choose the requested mode
 
@@ -67,7 +69,10 @@ if (app_state == APP_STATE_COVER &&
 game_handle_input(input);
 ```
 
-Adapt names to the project; preserve the guard's meaning. Call the helper from
+Adapt names to the project; preserve the guard's meaning. Gate on the state
+that received the event, before the play's own handler can change it. The
+helper logs the failing step under the `launcher_contract` tag; the caller's
+log adds the play's context. Call the helper from
 the input/application task, not a GPIO, timer, or LVGL callback. If the play
 must save state, complete a bounded save before calling the helper.
 
@@ -104,5 +109,8 @@ Do not claim that Up Long is reserved throughout the play.
 ## Resources
 
 - Protocol and acceptance details: [`references/protocol.md`](references/protocol.md)
+- Worked example: [`references/integration-example.md`](references/integration-example.md)
 - Reusable ESP-IDF component: [`assets/launcher_contract/`](assets/launcher_contract/)
+- Buildable reference play: [`examples/cover_return_demo/`](examples/cover_return_demo/)
+- Host tests to model a play's own gate tests on: [`tests/host/`](tests/host/)
 - Public guide: `https://calm.yishan.app/skills/`

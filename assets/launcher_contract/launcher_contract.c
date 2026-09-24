@@ -1,9 +1,14 @@
 #include "launcher_contract.h"
 
+#include <stddef.h>
+
 #include "esp_image_format.h"
+#include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
+
+static const char *TAG = "launcher_contract";
 
 esp_err_t launcher_contract_return_to_factory(void)
 {
@@ -15,23 +20,30 @@ esp_err_t launcher_contract_return_to_factory(void)
     esp_err_t error;
 
     if (factory == NULL) {
+        ESP_LOGE(TAG, "no app partition labeled \"factory\"");
         return ESP_ERR_NOT_FOUND;
     }
     if (running == factory) {
+        ESP_LOGE(TAG, "already running from factory");
         return ESP_ERR_INVALID_STATE;
     }
 
     position.offset = factory->address;
     position.size = factory->size;
-    if (esp_image_verify(ESP_IMAGE_VERIFY, &position, &metadata) != ESP_OK) {
+    error = esp_image_verify(ESP_IMAGE_VERIFY, &position, &metadata);
+    if (error != ESP_OK) {
+        ESP_LOGE(TAG, "factory image failed verification: %s",
+                 esp_err_to_name(error));
         return ESP_ERR_OTA_VALIDATE_FAILED;
     }
 
     error = esp_ota_set_boot_partition(factory);
     if (error != ESP_OK) {
+        ESP_LOGE(TAG, "cannot select factory as boot partition: %s",
+                 esp_err_to_name(error));
         return error;
     }
 
-    esp_restart();
-    return ESP_OK;
+    ESP_LOGI(TAG, "restarting into factory Launcher");
+    esp_restart(); /* declared noreturn; success never reaches the caller */
 }

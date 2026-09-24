@@ -31,9 +31,24 @@ npx skills add https://calm.yishan.app/skills/ai-passport-cover-arts-launcher.zi
 ## 内容
 
 - `SKILL.md` 与 `SKILL.zh_CN.md`：Agent 工作流与安全边界
-- `references/`：协议细节与验收清单
+- `references/`：协议细节、验收清单与接入示例
 - `assets/launcher_contract/`：可复用 ESP-IDF 返回组件
+- `examples/cover_return_demo/`：基于该组件构建的最小玩法
+- `tests/host/`：组件与封面门控的主机测试
 - `agents/openai.yaml`：Agent 元数据
+
+## 开发
+
+```bash
+tests/host/run.sh                   # host tests, needs only a C compiler
+scripts/check_i18n_sync.py          # English/Chinese docs structure check
+cd examples/cover_return_demo && idf.py build   # needs ESP-IDF 5.1 or newer
+```
+
+CI 在每个 Pull Request 上运行以上三项，并用多个 ESP-IDF 版本构建示例。
+
+英文文件为权威版本。修改时须在同一变更中同步对应的 `*.zh_CN.md`；同步检查
+要求标题结构一致、代码块完全相同、链接目标一致。
 
 ## 许可证
 
