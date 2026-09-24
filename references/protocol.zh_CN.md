@@ -30,11 +30,19 @@
 不得硬编码 factory 地址，不得选择未校验镜像。当 Launcher 依赖一次性 OTA
 回滚实现“重启返回 Launcher”时，不得把子应用标记为有效。
 
+这一要求适用于链接进玩法的全部代码，而不仅是玩法自身：`components/`、
+`managed_components/`、额外组件目录以及预编译库。固件中任何位置出现
+`esp_ota_mark_app_valid_cancel_rollback()` 都是阻碍。`launcher_contract` 之外的
+`esp_ota_set_boot_partition()`、`esp_https_ota()` 与 `esp_https_ota_finish()`
+会改变启动目标，需要审查。`scripts/audit_boot_control.py` 在源码和链接产物中
+检查这两类问题。
+
 ## 验收清单
 
 - 封面页 + Up Long：显示 Launcher。
 - 游戏中 + Up Long：保留玩法原有行为。
 - 设置／其他状态 + Up Long：保留玩法原有行为。
+- 发布构建的启动控制审计：无阻碍。
 - 玩法中复位：显示 Launcher。
 - 玩法中重新上电：显示 Launcher。
 - 受控测试中 factory 缺失／无效：不进入重启循环，日志记录错误。

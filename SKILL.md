@@ -14,9 +14,11 @@ Cover Arts Launcher. The protocol is deliberately narrow: **Up Long is handled
 only while the play's own cover/start page is active**. Gameplay, settings, and
 all other states retain their existing Up Long behavior.
 
-Read [`references/protocol.md`](references/protocol.md) before editing. Treat
-the project's own state machine, input model, and repository rules as the source
-of truth.
+Read [`references/protocol.md`](references/protocol.md) before editing, and
+[`references/integration-example.md`](references/integration-example.md) for a
+complete walkthrough with the reasoning, diff, and common mistakes. Treat the
+project's own state machine, input model, and repository rules as the source of
+truth.
 
 ## Choose the requested mode
 
@@ -40,6 +42,13 @@ request. Obtain the authorization required by the active repository workflow.
    point where that state is known.
 5. Check the partition assumptions. The helper finds a verified `factory`
    partition at runtime; never hardcode its address.
+6. Audit boot control across the whole play, dependencies included: build it,
+   then run `python3 scripts/audit_boot_control.py <play-dir>` from this
+   Skill's directory, adding `--extra <dir>` for each component directory
+   outside the play. It scans the play, `components/`, `managed_components/`
+   and prebuilt `.a` files, then uses the linker map and ELF to name the
+   library that actually links each call. Without a build, report that
+   prebuilt dependencies were checked by symbol name only.
 
 If the cover state cannot be identified reliably, stop and explain the blocker.
 Do not add a global listener and do not create a new cover page just to satisfy
@@ -67,13 +76,22 @@ if (app_state == APP_STATE_COVER &&
 game_handle_input(input);
 ```
 
-Adapt names to the project; preserve the guard's meaning. Call the helper from
+Adapt names to the project; preserve the guard's meaning. Gate on the state
+that received the event, before the play's own handler can change it. The
+helper logs the failing step under the `launcher_contract` tag; the caller's
+log adds the play's context. Call the helper from
 the input/application task, not a GPIO, timer, or LVGL callback. If the play
 must save state, complete a bounded save before calling the helper.
 
 Do not call `esp_ota_mark_app_valid_cancel_rollback()` when the installation
 relies on the Launcher's one-shot OTA behavior. Reset or power-cycle must remain
 the universal fallback that returns an unadapted or adapted play to Launcher.
+
+A dependency that makes this call breaks the fallback just as surely as the
+play doing it. Report every audit BLOCKER with the library that links it and
+change nothing without the creator's agreement. If the play has its own OTA
+path, `esp_ota_begin()` returns `ESP_ERR_OTA_ROLLBACK_INVALID_STATE` while the
+play runs unconfirmed; never resolve that by marking the play valid.
 
 ## Verify the boundary
 
@@ -86,6 +104,8 @@ gate. Inspect the final diff and verify all of the following:
 - A missing, invalid, or already-running factory partition produces an error
   and leaves the play running.
 - No factory address or product-specific partition offset is hardcoded.
+- The boot-control audit of the final build shows no BLOCKER, or each one is
+  reported with its origin for the creator to decide.
 - Reset or power-cycle still returns to Launcher.
 - The change adds no new screen text unless the creator explicitly requested it.
 
@@ -104,5 +124,8 @@ Do not claim that Up Long is reserved throughout the play.
 ## Resources
 
 - Protocol and acceptance details: [`references/protocol.md`](references/protocol.md)
+- Worked example: [`references/integration-example.md`](references/integration-example.md)
 - Reusable ESP-IDF component: [`assets/launcher_contract/`](assets/launcher_contract/)
+- Buildable reference play: [`examples/cover_return_demo/`](examples/cover_return_demo/)
+- Host tests to model a play's own gate tests on: [`tests/host/`](tests/host/)
 - Public guide: `https://calm.yishan.app/skills/`

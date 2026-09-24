@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-sync:
+    name: English/Chinese docs in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check_i18n_sync.py
+
+  host-tests:
+    name: Host tests (${{ matrix.cc }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - run: tests/host/run.sh
+        env:
+          CC: ${{ matrix.cc }}
+
+  audit-tests:
+    name: Boot-control audit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests/audit -v
+
+  idf-build:
+    name: ESP-IDF ${{ matrix.idf }} build (esp32c3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        idf: [v5.1.4, v5.3.2, v5.4.1]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ matrix.idf }}
+          target: esp32c3
+          path: examples/cover_return_demo
+      - name: Audit the linked example
+        run: python3 scripts/audit_boot_control.py examples/cover_return_demo --extra assets
